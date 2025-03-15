@@ -21,5 +21,5 @@ Custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) implementi
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/<your-username>/ComfyUI-CSM-Nodes.git
-   cd ComfyUI-CSM-Nodes
+   git clone https://github.com/thezveroboy/ComfyUI-CSM-Nodes.git
+   ```
