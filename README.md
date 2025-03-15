@@ -2,6 +2,8 @@
 
 Custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) implementing the `CSM` model for text-to-speech generation.
 
+![comfy-csm](https://github.com/thezveroboy/ComfyUI-CSM-Nodes/raw/main/picture.jpg)
+
 ## Features
 - Node `Load CSM Checkpoint`: Loads a model checkpoint from `ComfyUI/models/sesame/`.
 - Node `Load CSM Tokenizer`: Loads a tokenizer from `ComfyUI/models/sesame_tokenizer/`.
