@@ -1,0 +1,296 @@
+{
+  "last_node_id": 8,
+  "last_link_id": 14,
+  "nodes": [
+    {
+      "id": 4,
+      "type": "Text _O",
+      "pos": [
+        -831.7418212890625,
+        -535.7835693359375
+      ],
+      "size": [
+        423.42559814453125,
+        148.75650024414062
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            12
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-QualityOfLifeSuit_Omar92",
+        "ver": "f09d10dea0afbd3984a284acf8f0913a634e36ec",
+        "Node name for S&R": "Text _O"
+      },
+      "widgets_values": [
+        "hello my sweetie!"
+      ],
+      "shape": 1
+    },
+    {
+      "id": 6,
+      "type": "LoadCSMCheckpoint",
+      "pos": [
+        -733.9736938476562,
+        -273.12884521484375
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "model_path",
+          "type": "STRING",
+          "links": [
+            11
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadCSMCheckpoint"
+      },
+      "widgets_values": [
+        "csm-sesame-1b.pt"
+      ],
+      "shape": 1
+    },
+    {
+      "id": 5,
+      "type": "LoadCSMTokenizer",
+      "pos": [
+        -743.5570678710938,
+        -112.86427307128906
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "tokenizer_path",
+          "type": "STRING",
+          "links": [
+            10
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadCSMTokenizer"
+      },
+      "widgets_values": [
+        "llama_tokenizer"
+      ],
+      "shape": 1
+    },
+    {
+      "id": 8,
+      "type": "CSMTextToSpeech",
+      "pos": [
+        -280.0049743652344,
+        -379.78271484375
+      ],
+      "size": [
+        315,
+        266
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "text",
+          "type": "STRING",
+          "widget": {
+            "name": "text"
+          },
+          "link": 12
+        },
+        {
+          "name": "model_path",
+          "type": "STRING",
+          "widget": {
+            "name": "model_path"
+          },
+          "link": 11
+        },
+        {
+          "name": "tokenizer_path",
+          "type": "STRING",
+          "widget": {
+            "name": "tokenizer_path"
+          },
+          "link": 10
+        }
+      ],
+      "outputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "links": [
+            13,
+            14
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CSMTextToSpeech"
+      },
+      "widgets_values": [
+        "",
+        "",
+        "",
+        24000,
+        0,
+        90000,
+        0.9,
+        50
+      ],
+      "shape": 1
+    },
+    {
+      "id": 2,
+      "type": "PreviewAudio",
+      "pos": [
+        179.28598022460938,
+        -519.0613403320312
+      ],
+      "size": [
+        315,
+        88
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 13
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.26",
+        "Node name for S&R": "PreviewAudio"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "shape": 1
+    },
+    {
+      "id": 3,
+      "type": "SaveAudio",
+      "pos": [
+        177.21682739257812,
+        -231.54103088378906
+      ],
+      "size": [
+        315,
+        112
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "audio",
+          "type": "AUDIO",
+          "link": 14
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.3.26",
+        "Node name for S&R": "SaveAudio"
+      },
+      "widgets_values": [
+        "audio/ComfyUI",
+        ""
+      ],
+      "shape": 1
+    }
+  ],
+  "links": [
+    [
+      10,
+      5,
+      0,
+      8,
+      2,
+      "STRING"
+    ],
+    [
+      11,
+      6,
+      0,
+      8,
+      1,
+      "STRING"
+    ],
+    [
+      12,
+      4,
+      0,
+      8,
+      0,
+      "STRING"
+    ],
+    [
+      13,
+      8,
+      0,
+      2,
+      0,
+      "AUDIO"
+    ],
+    [
+      14,
+      8,
+      0,
+      3,
+      0,
+      "AUDIO"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.9090909090909095,
+      "offset": [
+        945.9164396359731,
+        716.8262673453149
+      ]
+    },
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}
