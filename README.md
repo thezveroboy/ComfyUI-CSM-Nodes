@@ -13,7 +13,7 @@ Custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) implementi
 - Installed ComfyUI.
 - Python 3.10+.
 - CUDA-compatible GPU (recommended).
-- Model weights (`ckpt.pt`) from [sesame/csm-1b](https://huggingface.co/sesame/csm-1b).
+- Model weights (`ckpt.pt`) from [sesame/csm-1b](https://huggingface.co/sesame/csm-1b) in `ComfyUI/models/sesame/`.
 - Tokenizer files (e.g., from [Llama-3.2-1B](https://huggingface.co/unsloth/Llama-3.2-1B/tree/main)) in `ComfyUI/models/sesame_tokenizer/<tokenizer_dir>/`.
 - Dependencies listed in `requirements.txt`.
 
