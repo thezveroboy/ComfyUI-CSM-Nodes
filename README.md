@@ -20,6 +20,15 @@ Custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) implementi
 ## Installation
 
 1. **Clone the repository:**
+   Clone this repo into custom_nodes folder
    ```bash
    git clone https://github.com/thezveroboy/ComfyUI-CSM-Nodes.git
+   ```
+   Install dependencies
+   ```bash
+   pip install -r requirements.txt
+   ```
+   or if you use the portable install, run this in ComfyUI_windows_portable -folder
+   ```bash
+   python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-CSM-Nodes\requirements.txt
    ```
