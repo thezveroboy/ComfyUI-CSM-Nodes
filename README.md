@@ -28,7 +28,7 @@ Custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) implementi
    ```bash
    pip install -r requirements.txt
    ```
-   or if you use the portable install, run this in ComfyUI_windows_portable -folder
+   or if you use the portable install, run this in ComfyUI_windows_portable folder
    ```bash
    python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-CSM-Nodes\requirements.txt
    ```
