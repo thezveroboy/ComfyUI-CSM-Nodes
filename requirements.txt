@@ -3,3 +3,4 @@ torchaudio
 tokenizers
 transformers
 torchtune
+torchao
