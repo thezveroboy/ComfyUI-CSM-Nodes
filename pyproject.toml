@@ -1,0 +1,15 @@
+[project]
+name = "csm-nodes"
+description = "Custom nodes for ComfyUI implementing the csm model for text-to-speech generation."
+version = "1.0.0"
+license = {file = "LICENSE"}
+dependencies = ["torch==2.4.0", "torchaudio==2.4.0", "tokenizers==0.21.0", "transformers==4.49.0", "huggingface_hub==0.28.1", "moshi==0.2.2", "torchtune==0.4.0", "torchao==0.9.0"]
+
+[project.urls]
+Repository = "https://github.com/thezveroboy/ComfyUI-CSM-Nodes"
+#  Used by Comfy Registry https://comfyregistry.org
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "ComfyUI-CSM-Nodes"
+Icon = ""
