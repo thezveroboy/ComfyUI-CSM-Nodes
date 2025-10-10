@@ -441,6 +441,12 @@ class CSMTextToSpeechWithContext:
     FUNCTION = "generate_speech"
     CATEGORY = "Audio/CSM"
 
+    @classmethod
+    def IS_CHANGED(cls, **kwargs):
+        # Return a random value to force re-execution every time
+        import random
+        return random.random()
+
     def generate_speech(self, text, model_path, tokenizer_path, sample_rate, context=None, speaker=0, max_audio_length_ms=90000.0, temperature=0.9, topk=50):
         if not model_path:
             raise ValueError("Model path is empty! Connect LoadCSMCheckpoint.")
