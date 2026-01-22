@@ -11,7 +11,7 @@ Custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) implementi
 - Node `Load CSM Tokenizer`: Loads a tokenizer from `ComfyUI/models/sesame_tokenizer/`.
 - Node `CSM Text-to-Speech`: Generates audio from text using the CSM-1B model.
 - Node `CSM Text-to-Speech with Context`: Generates audio from text and example of voice using the CSM-1B model.
-- 
+
 ## Requirements
 - Installed ComfyUI.
 - Python 3.10+.
@@ -35,4 +35,5 @@ Custom nodes for [ComfyUI](https://github.com/comfyanonymous/ComfyUI) implementi
    ```bash
    python_embeded\python.exe -m pip install -r ComfyUI\custom_nodes\ComfyUI-CSM-Nodes\requirements.txt
    ```
+
 
