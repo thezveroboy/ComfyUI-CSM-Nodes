@@ -21,6 +21,9 @@ folder_paths.add_model_folder_path("sesame", sesame_path)
 tokenizer_path = os.path.join(folder_paths.models_dir, "sesame_tokenizer")
 folder_paths.add_model_folder_path("sesame_tokenizer", tokenizer_path)
 
+audio_path = os.path.join(folder_paths.models_dir, "audio")
+folder_paths.add_model_folder_path("audio", audio_path)  # Регистрация папки audio
+
 # Вспомогательные функции для моделей LLaMA
 def llama3_2_1B() -> torchtune.modules.transformer.TransformerDecoder:
     return llama3_2.llama3_2(
@@ -201,11 +204,32 @@ class Generator:
         return torch.cat(frame_tokens, dim=0), torch.cat(frame_masks, dim=0)
 
     def _tokenize_audio(self, audio: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        if audio.dim() == 3 and audio.size(1) == 2:
+            audio = audio.mean(dim=1, keepdim=True)
+        elif audio.dim() == 2 and audio.size(0) == 2:
+            audio = audio.mean(dim=0, keepdim=True)
+
+        if audio.dim() == 3 and audio.size(1) != 1:
+            raise ValueError(f"Ожидается моно-аудио, но получено {audio.size(1)} каналов")
+        elif audio.dim() == 2 and audio.size(0) != 1:
+            raise ValueError(f"Ожидается моно-аудио, но получено {audio.size(0)} каналов")
+
+        if audio.dim() == 3:
+            audio = audio.squeeze(0).squeeze(0)
+        elif audio.dim() == 2:
+            audio = audio.squeeze(0)
+
         audio = audio.to(self.device)
-        inputs = self._feature_extractor(raw_audio=audio.cpu().numpy(), sampling_rate=self.sample_rate, return_tensors="pt").to(self.device)
+        inputs = self._feature_extractor(
+            raw_audio=audio.cpu().numpy(),
+            sampling_rate=self.sample_rate,
+            return_tensors="pt"
+        ).to(self.device)
+
         with torch.no_grad():
             encoder_outputs = self._audio_tokenizer.encode(inputs["input_values"])
-            audio_tokens = encoder_outputs.audio_codes.squeeze(0)  # [num_codebooks, T]
+            audio_tokens = encoder_outputs.audio_codes.squeeze(0)
+
         frame_tokens = []
         frame_masks = []
         eos_frame = torch.zeros(audio_tokens.size(0), 1, dtype=torch.long).to(self.device)
@@ -224,7 +248,7 @@ class Generator:
         return torch.cat([text_tokens, audio_tokens], dim=0), torch.cat([text_masks, audio_masks], dim=0)
 
     @torch.inference_mode()
-    def generate(self, text: str, speaker: int, context: List[Segment], max_audio_length_ms: float = 90000, temperature: float = 0.9, topk: int = 50) -> torch.Tensor:
+    def generate(self, text: str, speaker: int, context: List[Segment], max_audio_length_ms: float = 90000, temperature: float = 0.5, topk: int = 10) -> torch.Tensor:
         self._model.reset_caches()
         max_audio_frames = int(max_audio_length_ms / 80)
         tokens, tokens_mask = [], []
@@ -252,17 +276,16 @@ class Generator:
             curr_tokens = torch.cat([sample, torch.zeros(1, 1).long().to(self.device)], dim=1).unsqueeze(1)
             curr_tokens_mask = torch.cat([torch.ones_like(sample).bool(), torch.zeros(1, 1).bool().to(self.device)], dim=1).unsqueeze(1)
             curr_pos = curr_pos[:, -1:] + 1
-        audio_tokens = torch.stack(samples).permute(1, 2, 0)  # [B, num_codebooks, T]
+        audio_tokens = torch.stack(samples).permute(1, 2, 0)
         with torch.no_grad():
             dummy_audio = torch.zeros(max_audio_frames * (self.sample_rate // 80), dtype=torch.float32)
             inputs = self._feature_extractor(raw_audio=dummy_audio.cpu().numpy(), sampling_rate=self.sample_rate, return_tensors="pt").to(self.device)
             audio = self._audio_tokenizer.decode(audio_tokens, inputs["padding_mask"])[0]
         
-        # Приводим звук к формату [1, 1, samples] (3D тензор)
         if audio.dim() == 1:
-            audio = audio.unsqueeze(0).unsqueeze(0)  # [1, 1, samples]
+            audio = audio.unsqueeze(0).unsqueeze(0)
         elif audio.dim() == 2:
-            audio = audio.unsqueeze(0)  # [1, 1, samples]
+            audio = audio.unsqueeze(0)
         return audio
 
 def load_csm_1b(ckpt_path: str, tokenizer_path: str, device: str = "cuda") -> 'Generator':
@@ -290,7 +313,7 @@ class LoadCSMCheckpoint:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("model_path",)
     FUNCTION = "load_checkpoint"
-    CATEGORY = "Audio/CSM"
+    CATEGORY = "zveroboy/CSM"  # Изменено с Audio на zveroboy
 
     def load_checkpoint(self, checkpoint):
         model_path = folder_paths.get_full_path("sesame", checkpoint)
@@ -312,7 +335,7 @@ class LoadCSMTokenizer:
     RETURN_TYPES = ("STRING",)
     RETURN_NAMES = ("tokenizer_path",)
     FUNCTION = "load_tokenizer"
-    CATEGORY = "Audio/CSM"
+    CATEGORY = "zveroboy/CSM"  # Изменено с Audio на zveroboy
 
     def load_tokenizer(self, tokenizer_dir):
         base_path = folder_paths.get_folder_paths("sesame_tokenizer")[0]
@@ -321,6 +344,48 @@ class LoadCSMTokenizer:
             raise FileNotFoundError(f"Директория токенизатора {full_path} не найдена")
         print(f"Загрузка токенизатора из: {full_path}")
         return (full_path,)
+
+class LoadAudioWithTranscription:
+    @classmethod
+    def INPUT_TYPES(cls):
+        audio_files = folder_paths.get_filename_list("audio") or []
+        if not audio_files:
+            print("Предупреждение: Аудиофайлы не найдены в ComfyUI/models/audio/. Убедитесь, что папка существует и содержит файлы.")
+        return {
+            "required": {
+                "audio_file": (audio_files if audio_files else ["No audio files found"],),
+                "transcription": ("STRING", {"default": "", "multiline": True}),
+                "speaker": ("INT", {"default": 0, "min": 0, "max": 10}),
+            }
+        }
+
+    RETURN_TYPES = ("AUDIO", "STRING", "INT")
+    RETURN_NAMES = ("audio", "transcription", "speaker")
+    FUNCTION = "load_audio"
+    CATEGORY = "zveroboy/CSM"  # Изменено с Audio на zveroboy
+
+    def load_audio(self, audio_file, transcription, speaker):
+        audio_path = folder_paths.get_full_path("audio", audio_file)
+        if not audio_path or not os.path.exists(audio_path):
+            raise FileNotFoundError(f"Аудиофайл {audio_file} не найден в ComfyUI/models/audio/")
+        
+        # Загрузка аудио
+        waveform, sample_rate = torchaudio.load(audio_path)
+        if sample_rate != 24000:  # Приведение к 24 кГц, как ожидает Mimi
+            resampler = torchaudio.transforms.Resample(sample_rate, 24000)
+            waveform = resampler(waveform)
+            sample_rate = 24000
+        
+        # Приведение к моно, если стерео
+        if waveform.size(0) == 2:
+            waveform = waveform.mean(dim=0, keepdim=True)
+        
+        # Приведение к 3D формату [1, 1, samples]
+        if waveform.dim() == 2:
+            waveform = waveform.unsqueeze(0)
+
+        print(f"Загружен аудиофайл: {audio_path}, транскрипция: {transcription}, спикер: {speaker}")
+        return ({"waveform": waveform, "sample_rate": sample_rate}, transcription, speaker)
 
 class CSMTextToSpeech:
     @classmethod
@@ -335,44 +400,36 @@ class CSMTextToSpeech:
             "optional": {
                 "speaker": ("INT", {"default": 0, "min": 0, "max": 10}),
                 "max_audio_length_ms": ("FLOAT", {"default": 90000.0, "min": 1000.0, "max": 300000.0}),
-                "temperature": ("FLOAT", {"default": 0.9, "min": 0.1, "max": 2.0}),
-                "topk": ("INT", {"default": 50, "min": 1, "max": 100}),
+                "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 2.0}),
+                "topk": ("INT", {"default": 100, "min": 1, "max": 200}),
             }
         }
 
     RETURN_TYPES = ("AUDIO",)
     RETURN_NAMES = ("audio",)
     FUNCTION = "generate_speech"
-    CATEGORY = "Audio/CSM"
+    CATEGORY = "zveroboy/CSM"  # Изменено с Audio на zveroboy
 
-    def generate_speech(self, text, model_path, tokenizer_path, sample_rate, speaker=0, max_audio_length_ms=90000.0, temperature=0.9, topk=50):
-        if not model_path:
-            raise ValueError("Путь к модели пуст! Подключите LoadCSMCheckpoint.")
-        if not os.path.isfile(model_path):
-            raise ValueError(f"model_path {model_path} не является файлом! Убедитесь, что LoadCSMCheckpoint возвращает путь к файлу чекпоинта.")
-        if not tokenizer_path:
-            raise ValueError("Путь к токенизатору пуст! Подключите LoadCSMTokenizer.")
-        if not os.path.isdir(tokenizer_path):
-            raise ValueError(f"tokenizer_path {tokenizer_path} не является директорией! Убедитесь, что LoadCSMTokenizer возвращает путь к директории токенизатора.")
+    def generate_speech(self, text, model_path, tokenizer_path, sample_rate, speaker=0, max_audio_length_ms=90000.0, temperature=0.7, topk=100):
+        if not model_path or not os.path.isfile(model_path):
+            raise ValueError(f"model_path {model_path} некорректен!")
+        if not tokenizer_path or not os.path.isdir(tokenizer_path):
+            raise ValueError(f"tokenizer_path {tokenizer_path} некорректен!")
         if not text:
-            raise ValueError("Текст пуст! Укажите текст.")
+            raise ValueError("Текст пуст!")
 
-        # Кеширование моделей
         global _MODEL_CACHE, _TOKENIZER_CACHE
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # Загрузка модели, если она еще не загружена
         if model_path not in _MODEL_CACHE:
             print(f"Загрузка модели из {model_path}")
             _MODEL_CACHE[model_path] = load_csm_1b(model_path, tokenizer_path, device=device)
         generator = _MODEL_CACHE[model_path]
 
-        # Загрузка токенизатора, если он еще не загружен
         if tokenizer_path not in _TOKENIZER_CACHE:
             print(f"Загрузка токенизатора из {tokenizer_path}")
             _TOKENIZER_CACHE[tokenizer_path] = generator._text_tokenizer
 
-        # Генерация аудио
         audio = generator.generate(
             text=text,
             speaker=speaker,
@@ -381,29 +438,110 @@ class CSMTextToSpeech:
             temperature=temperature,
             topk=topk
         )
-        print(f"Размерность audio после generate: {audio.shape}")
 
-        # Приводим звук к формату [1, 1, samples] (3D тензор)
         if audio.dim() == 1:
-            audio = audio.unsqueeze(0).unsqueeze(0)  # [1, 1, samples]
+            audio = audio.unsqueeze(0).unsqueeze(0)
         elif audio.dim() == 2:
-            audio = audio.unsqueeze(0)  # [1, 1, samples]
-        print(f"Размерность audio перед возвратом: {audio.shape}")
+            audio = audio.unsqueeze(0)
 
-        # Возвращаем звук в формате, ожидаемом ComfyUI
+        return ({"waveform": audio, "sample_rate": sample_rate},)
+
+class CSMTextToSpeechWithContext:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "text": ("STRING",),
+                "model_path": ("STRING",),
+                "tokenizer_path": ("STRING",),
+                "sample_rate": ("INT", {"default": 24000, "min": 8000, "max": 48000}),
+                "audio_context": ("AUDIO",),
+                "context_transcription": ("STRING",),
+                "context_speaker": ("INT", {"default": 0, "min": 0, "max": 10}),
+            },
+            "optional": {
+                "speaker": ("INT", {"default": 0, "min": 0, "max": 10}),
+                "max_audio_length_ms": ("FLOAT", {"default": 90000.0, "min": 1000.0, "max": 300000.0}),
+                "temperature": ("FLOAT", {"default": 0.7, "min": 0.1, "max": 2.0}),
+                "topk": ("INT", {"default": 100, "min": 1, "max": 200}),
+            }
+        }
+
+    RETURN_TYPES = ("AUDIO",)
+    RETURN_NAMES = ("audio",)
+    FUNCTION = "generate_speech_with_context"
+    CATEGORY = "zveroboy/CSM"  # Изменено с Audio на zveroboy
+
+    def generate_speech_with_context(self, text, model_path, tokenizer_path, sample_rate, audio_context, context_transcription, context_speaker, speaker=0, max_audio_length_ms=90000.0, temperature=0.7, topk=100):
+        if not model_path or not os.path.isfile(model_path):
+            raise ValueError(f"model_path {model_path} некорректен!")
+        if not tokenizer_path or not os.path.isdir(tokenizer_path):
+            raise ValueError(f"tokenizer_path {tokenizer_path} некорректен!")
+        if not text:
+            raise ValueError("Текст пуст!")
+        if not audio_context:
+            raise ValueError("Аудио-контекст пуст!")
+        if not context_transcription:
+            raise ValueError("Транскрипция контекста пуста! Укажите транскрипцию в LoadAudioWithTranscription.")
+
+        global _MODEL_CACHE, _TOKENIZER_CACHE
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        if model_path not in _MODEL_CACHE:
+            print(f"Загрузка модели из {model_path}")
+            _MODEL_CACHE[model_path] = load_csm_1b(model_path, tokenizer_path, device=device)
+        generator = _MODEL_CACHE[model_path]
+
+        if tokenizer_path not in _TOKENIZER_CACHE:
+            print(f"Загрузка токенизатора из {tokenizer_path}")
+            _TOKENIZER_CACHE[tokenizer_path] = generator._text_tokenizer
+
+        # Подготовка аудио-контекста
+        audio_tensor = audio_context["waveform"]
+        input_sample_rate = audio_context["sample_rate"]
+        if input_sample_rate != 24000:
+            resampler = torchaudio.transforms.Resample(input_sample_rate, 24000)
+            audio_tensor = resampler(audio_tensor)
+        if audio_tensor.dim() == 3:
+            audio_tensor = audio_tensor.squeeze(0)
+
+        context_segment = Segment(
+            speaker=context_speaker,
+            text=context_transcription,
+            audio=audio_tensor
+        )
+
+        audio = generator.generate(
+            text=text,
+            speaker=speaker,
+            context=[context_segment],
+            max_audio_length_ms=max_audio_length_ms,
+            temperature=temperature,
+            topk=topk
+        )
+
+        if audio.dim() == 1:
+            audio = audio.unsqueeze(0).unsqueeze(0)
+        elif audio.dim() == 2:
+            audio = audio.unsqueeze(0)
+
         return ({"waveform": audio, "sample_rate": sample_rate},)
 
 # Регистрация нод
 NODE_CLASS_MAPPINGS = {
     "LoadCSMCheckpoint": LoadCSMCheckpoint,
     "LoadCSMTokenizer": LoadCSMTokenizer,
-    "CSMTextToSpeech": CSMTextToSpeech
+    "LoadAudioWithTranscription": LoadAudioWithTranscription,
+    "CSMTextToSpeech": CSMTextToSpeech,
+    "CSMTextToSpeechWithContext": CSMTextToSpeechWithContext
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     "LoadCSMCheckpoint": "Load CSM Checkpoint",
     "LoadCSMTokenizer": "Load CSM Tokenizer",
-    "CSMTextToSpeech": "CSM Text-to-Speech"
+    "LoadAudioWithTranscription": "Load Audio with Transcription",
+    "CSMTextToSpeech": "CSM Text-to-Speech",
+    "CSMTextToSpeechWithContext": "CSM Text-to-Speech with Context"
 }
 
-print("Зарегистрированы ноды CSM: LoadCSMCheckpoint, LoadCSMTokenizer, CSMTextToSpeech")
+print("Зарегистрированы ноды CSM: LoadCSMCheckpoint, LoadCSMTokenizer, LoadAudioWithTranscription, CSMTextToSpeech, CSMTextToSpeechWithContext")
